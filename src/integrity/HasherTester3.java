@@ -5,7 +5,9 @@ public class HasherTester3 {
         String filename= "binaryfiles";
      try {
          // Generar archivo de integridad
-         Hasher.generateIntegrityCheckerFile(filename, "integrity.txt");
+         //Hasher.generateIntegrityCheckerFile(filename, "sha256sum.txt");
+
+         Hasher.generateIntegrityFile(filename, "sha256sum.txt");
      } catch (Exception e) {
          e.printStackTrace();
      }
