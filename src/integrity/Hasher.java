@@ -80,6 +80,10 @@ public class Hasher {
             throw new IllegalArgumentException("La carpeta no existe o no es un directorio.");
         }
 
+        if (!integrityFile.exists()) {
+            throw new IllegalArgumentException("El archivo de integridad no existe.");
+        }
+
         int missingFilesCount = 0;
         int checksumMismatchCount = 0;
         int improperlyFormattedLinesCount = 0;
@@ -90,80 +94,61 @@ public class Hasher {
             String line;
 
             while ((line = reader.readLine()) != null) {
-                String[] parts;
+                String[] parts = line.contains("*") ? line.split("\\*", 2) : line.split("  ", 2);
 
-                if (line.contains("*")) {
-                    parts = line.split("\\*", 2);
-                } else {
-                    parts = line.split("  ", 2);
-                }
-
-                String expectedHash = "";
-                String fileName = "";
-
-                try {
-                    expectedHash = parts[0].trim();
-                    fileName = parts[1].trim();
-                }catch (Exception e){
+                if (parts.length < 2) {
                     improperlyFormattedLinesCount++;
+                    System.out.println(line + ": improperly formatted");
                     continue;
                 }
-                //verificar tamaño hash 
-                if (expectedHash.length() != 64) {
-                    improperlyFormattedLinesCount++;
-                    continue;
-                }
-                
-                //verificar que el hash sea hexadecimal
-                if (!Util.isHexadecimal(expectedHash)) {
-                    improperlyFormattedLinesCount++;
-                    continue;
-                }
-                
-                
-                
 
-                //System.out.println(parts);
+                String expectedHash = parts[0].trim();
+                String fileName = parts[1].trim();
+
+                // Validaciones del hash
+                if (expectedHash.length() != 64 || !Util.isHexadecimal(expectedHash)) {
+                    improperlyFormattedLinesCount++;
+                    checksumMismatchCount++;
+                    System.out.println(line + ": improperly formatted");
+                    continue;
+                }
+
                 File file = new File(folder, fileName);
 
                 if (!file.exists()) {
-                    System.out.println(fileName + ": No such file or directory");
-                    System.out.println(fileName + ": FAILED open or read");
                     missingFilesCount++;
                     missingFiles.add(fileName);
+                    System.out.println(fileName + ": No such file or directory");
+                    System.out.println(fileName + ": FAILED open or read");
                     continue;
                 }
 
                 String actualHash = getHashFile(file.getPath(), "SHA-256");
-                if (actualHash.equals(expectedHash)) {
-                    System.out.println(fileName + ": OK");
-                } else {
-                    System.out.println(fileName + ": FAILED");
+                if (!actualHash.equals(expectedHash)) {
                     checksumMismatchCount++;
                     checksumMismatchFiles.add(fileName);
+                    System.out.println(fileName + ": FAILED");
+                } else {
+                    System.out.println(fileName + ": OK");
                 }
             }
         }
 
-       
-    }
-    
-    //verificar e imprimir los diferentes errores
-    public static void imprimirErrores(int missingFilesCount, int checksumMismatchCount, int improperlyFormattedLinesCount){
+        // Mostrar errores resumidos al final del proceso
         if (improperlyFormattedLinesCount > 0) {
             System.out.println("WARNING: " + improperlyFormattedLinesCount + (improperlyFormattedLinesCount == 1 ? " line is improperly formatted" : " lines are improperly formatted"));
         }
         if (missingFilesCount > 0) {
             System.out.println("WARNING: " + missingFilesCount + (missingFilesCount == 1 ? " listed file could not be read" : " listed files could not be read"));
         }
-        else if (checksumMismatchCount > 0) {
+        if (checksumMismatchCount > 0) {
             System.out.println("WARNING: " + checksumMismatchCount + (checksumMismatchCount == 1 ? " computed checksum did NOT match" : " computed checksums did NOT match"));
         }
-        else if (missingFilesCount > 0) {
-            System.out.println("WARNING: " + missingFilesCount + (missingFilesCount == 1 ? " listed file could not be read" : " listed files could not be read"));
-        }
 
-        else if (missingFilesCount == 0 && checksumMismatchCount == 0 && improperlyFormattedLinesCount == 0) {
+        if (missingFilesCount == 0 && checksumMismatchCount == 0 && improperlyFormattedLinesCount == 0) {
             System.out.println("Todos los archivos han pasado la verificación.");
-        }}
+        }
+    }
+
+
 }
